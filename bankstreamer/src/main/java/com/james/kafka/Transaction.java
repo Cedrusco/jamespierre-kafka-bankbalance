@@ -1,6 +1,8 @@
 package com.james.kafka;
 
-public class Transaction {
+import java.io.Serializable;
+
+public class Transaction implements Serializable {
     public String name;
     public long amount;
     public String time;

@@ -36,12 +36,12 @@ public class BankProducer {
             while (true) {
                 taskTime = System.currentTimeMillis();
 
-                producer.send(createTransactionRecord(createTransactionString("James", random.nextInt(10000) + 1, getCurrentDate())));
-                producer.send(createTransactionRecord(createTransactionString("Ryan", random.nextInt(10000) + 1, getCurrentDate())));
-                producer.send(createTransactionRecord(createTransactionString("Steven", random.nextInt(10000) + 1, getCurrentDate())));
-                producer.send(createTransactionRecord(createTransactionString("Krystal", random.nextInt(10000) + 1, getCurrentDate())));
-                producer.send(createTransactionRecord(createTransactionString("Amy", random.nextInt(10000) + 1, getCurrentDate())));
-                producer.send(createTransactionRecord(createTransactionString("Zoe", random.nextInt(10000) + 1, getCurrentDate())));
+                producer.send(createTransactionRecord(createTransactionString("James", (long)random.nextInt(10000) + 1, getCurrentDate())));
+                producer.send(createTransactionRecord(createTransactionString("Ryan", (long)random.nextInt(10000) + 1, getCurrentDate())));
+                producer.send(createTransactionRecord(createTransactionString("Steven", (long)random.nextInt(10000) + 1, getCurrentDate())));
+                producer.send(createTransactionRecord(createTransactionString("Krystal", (long)random.nextInt(10000) + 1, getCurrentDate())));
+                producer.send(createTransactionRecord(createTransactionString("Amy", (long)random.nextInt(10000) + 1, getCurrentDate())));
+                producer.send(createTransactionRecord(createTransactionString("Zoe", (long)random.nextInt(10000) + 1, getCurrentDate())));
 
                 taskTime = System.currentTimeMillis() - taskTime;
                 if (sleepTime - taskTime > 0) {
@@ -61,7 +61,7 @@ public class BankProducer {
         return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
     }
 
-    private static Transaction createTransactionString(String name, int amount, String date) {
+    private static Transaction createTransactionString(String name, Long amount, String date) {
         return new Transaction(name, amount, date);
     }
 
