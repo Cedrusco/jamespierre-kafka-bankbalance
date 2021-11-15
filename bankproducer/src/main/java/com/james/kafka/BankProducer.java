@@ -6,12 +6,13 @@ import java.time.temporal.ChronoUnit;
 import java.util.Properties;
 import java.util.Random;
 
+import com.google.gson.Gson;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 public class BankProducer {
-    //
+
     // Create a Producer that outputs ~ 100 messages per second to a topic.
     //      - Message has random amount (positive value)
     //      - output evenly transactions for 6 customers
@@ -60,13 +61,12 @@ public class BankProducer {
         return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
     }
 
-    private static String createTransactionString(String name, int amount, String date) {
-        String transactionJSON = "{\"Name\":\"%s\", \"amount\":%d, \"time\":\"%s\"}";
-
-        return String.format(transactionJSON, name, amount, date);
+    private static Transaction createTransactionString(String name, int amount, String date) {
+        return new Transaction(name, amount, date);
     }
 
-    private static ProducerRecord<String, String> createTransactionRecord(String transaction) {
-        return new ProducerRecord<>("bank-transaction-input", null, transaction);
+    private static ProducerRecord<String, String> createTransactionRecord(Transaction transaction) {
+        Gson gson = new Gson();
+        return new ProducerRecord<>("bank-transaction-input", transaction.getName(), gson.toJson(transaction));
     }
 }
