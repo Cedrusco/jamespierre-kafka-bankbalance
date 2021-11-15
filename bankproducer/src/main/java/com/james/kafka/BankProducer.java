@@ -24,6 +24,13 @@ public class BankProducer {
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
 
+        // New Properties Added after last commit which I got from the next video in the series.
+        props.put(ProducerConfig.ACKS_CONFIG, "all");
+        props.put(ProducerConfig.RETRIES_CONFIG, "3");
+        props.put(ProducerConfig.LINGER_MS_CONFIG, "1");
+        // Ensure we don't push duplicates
+        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
+
         KafkaProducer<String, String> producer = new KafkaProducer<>(props);
 
         long taskTime;
@@ -34,18 +41,23 @@ public class BankProducer {
         try {
             // limit loop to 100 times per second.
             while (true) {
-                taskTime = System.currentTimeMillis();
+                try {
+                    taskTime = System.currentTimeMillis();
 
-                producer.send(createTransactionRecord(createTransactionString("James", (long)random.nextInt(10000) + 1, getCurrentDate())));
-                producer.send(createTransactionRecord(createTransactionString("Ryan", (long)random.nextInt(10000) + 1, getCurrentDate())));
-                producer.send(createTransactionRecord(createTransactionString("Steven", (long)random.nextInt(10000) + 1, getCurrentDate())));
-                producer.send(createTransactionRecord(createTransactionString("Krystal", (long)random.nextInt(10000) + 1, getCurrentDate())));
-                producer.send(createTransactionRecord(createTransactionString("Amy", (long)random.nextInt(10000) + 1, getCurrentDate())));
-                producer.send(createTransactionRecord(createTransactionString("Zoe", (long)random.nextInt(10000) + 1, getCurrentDate())));
+                    producer.send(createTransactionRecord(createTransactionString("James", (long) random.nextInt(10000) + 1, getCurrentDate())));
+                    producer.send(createTransactionRecord(createTransactionString("Ryan", (long) random.nextInt(10000) + 1, getCurrentDate())));
+                    producer.send(createTransactionRecord(createTransactionString("Steven", (long) random.nextInt(10000) + 1, getCurrentDate())));
+                    producer.send(createTransactionRecord(createTransactionString("Krystal", (long) random.nextInt(10000) + 1, getCurrentDate())));
+                    producer.send(createTransactionRecord(createTransactionString("Amy", (long) random.nextInt(10000) + 1, getCurrentDate())));
+                    producer.send(createTransactionRecord(createTransactionString("Zoe", (long) random.nextInt(10000) + 1, getCurrentDate())));
 
-                taskTime = System.currentTimeMillis() - taskTime;
-                if (sleepTime - taskTime > 0) {
-                    Thread.sleep(sleepTime - taskTime);
+                    taskTime = System.currentTimeMillis() - taskTime;
+                    if (sleepTime - taskTime > 0) {
+                        Thread.sleep(sleepTime - taskTime);
+                    }
+                }
+                catch (InterruptedException iex) {
+                    break;
                 }
             }
         }
