@@ -7,6 +7,8 @@ public class Transaction implements Serializable {
     public long amount;
     public String time;
 
+    public Transaction() {}
+
     public Transaction(String name, long amount, String time) {
         this.name = name;
         this.amount = amount;

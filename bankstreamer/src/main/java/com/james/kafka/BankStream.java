@@ -1,17 +1,19 @@
 package com.james.kafka;
 
-import com.google.gson.Gson;
+import com.james.kafka.deserializer.JsonDeserializer;
+import com.james.kafka.serializer.JsonSerializer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.state.Stores;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
+import java.time.Instant;
 import java.util.Properties;
 
 public class BankStream {
@@ -23,43 +25,42 @@ public class BankStream {
 
         prop.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, "exactly_once");
 
+        Serializer<Balance> balanceSerializer = new JsonSerializer<>();
+        Serializer<Transaction> transactionSerializer = new JsonSerializer<>();
+        Deserializer<Balance> balanceDeserializer = new JsonDeserializer<>(Balance.class);
+        Deserializer<Transaction> transactionDeserializer = new JsonDeserializer<>(Transaction.class);
+        Serde<Balance> balanceSerde = Serdes.serdeFrom(balanceSerializer, balanceDeserializer);
+        Serde<Transaction> transactionSerde = Serdes.serdeFrom(transactionSerializer, transactionDeserializer);
+
+        Balance initialBalance = new Balance();
+        initialBalance.setCount(0);
+        initialBalance.setBalance(0);
+        initialBalance.setTime(Instant.ofEpochMilli(0L).toString());
+
         StreamsBuilder builder = new StreamsBuilder();
 
-        KStream<String, String> input = builder.stream("bank-transaction-input", Consumed.with(Serdes.String(), Serdes.String()));
-        KGroupedStream<String, String> grouped = input
+        KStream<String, Transaction> input = builder.stream("bank-transaction-input", Consumed.with(Serdes.String(), transactionSerde));
+        KGroupedStream<String, Transaction> grouped = input
                 .filter((key, value) -> value != null)
-                .groupByKey();
+                .groupByKey(Grouped.with(Serdes.String(), transactionSerde));
 
-        KTable<String, String> balance = grouped
+        KTable<String, Balance> balanceTable = grouped
                 .aggregate(
-                        () -> "{}",
-                        (key, newValue, aggValue) -> {
-                            Gson gson = new Gson();
-                            Transaction transaction = gson.fromJson(newValue, Transaction.class);
-                            Transaction aggTransaction = gson.fromJson(aggValue, Transaction.class);
-                            aggTransaction.setAmount(aggTransaction.getAmount() + transaction.getAmount());
-                            if (aggTransaction.getName() == null) aggTransaction.setName(transaction.getName());
-                            if (aggTransaction.getTime() == null) {
-                                aggTransaction.setTime(transaction.getTime());
-                            }
-                            else {
-                                try {
-                                    Date start = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ENGLISH).parse(aggTransaction.getTime());
-                                    Date end = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ENGLISH).parse(transaction.getTime());
+                        () -> initialBalance,
+                        (key, transaction, oldBalance) -> {
+                            Balance newBalance = new Balance();
+                            newBalance.setCount(oldBalance.getCount() + 1);
+                            newBalance.setBalance(oldBalance.getBalance() + transaction.getAmount());
 
-                                    if (start.compareTo(end) < 0) {
-                                        aggTransaction.setTime(transaction.getTime());
-                                    }
-                                }
-                                catch (Exception ex) {
-                                    ex.printStackTrace();
-                                }
-                            }
-                            return gson.toJson(aggTransaction);
+                            long transactionEpoch = Instant.parse(transaction.getTime()).toEpochMilli();
+                            long balanceEpoch = Instant.parse(oldBalance.getTime()).toEpochMilli();
+                            newBalance.setTime(Instant.ofEpochMilli(Math.max(balanceEpoch, transactionEpoch)).toString());
+
+                            return newBalance;
                         },
-                        Materialized.<String, String>as(Stores.persistentKeyValueStore("bank-balance-store")).with(Serdes.String(), Serdes.String()));
+                        Materialized.<String, Balance>as(Stores.persistentKeyValueStore("bank-balance-store")).with(Serdes.String(), balanceSerde));
 
-        balance.toStream().to("bank-transaction-output", Produced.with(Serdes.String(), Serdes.String()));
+        balanceTable.toStream().to("bank-transaction-output", Produced.with(Serdes.String(), balanceSerde));
 
         KafkaStreams streams = new KafkaStreams(builder.build(), prop);
         streams.start();

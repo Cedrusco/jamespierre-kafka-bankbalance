@@ -1,8 +1,6 @@
 package com.james.kafka;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
+import java.time.Instant;
 import java.util.Properties;
 import java.util.Random;
 
@@ -70,7 +68,7 @@ public class BankProducer {
     }
 
     private static String getCurrentDate() {
-        return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+        return Instant.now().toString();
     }
 
     private static Transaction createTransactionString(String name, Long amount, String date) {
